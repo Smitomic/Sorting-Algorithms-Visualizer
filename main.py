@@ -17,6 +17,8 @@ turquoise = (0, 180, 180)
 light_turquoise = (0, 230, 230)
 green = (0, 255, 0)
 red = (255, 0, 0)
+trans = (1, 1, 1)
+orange = (200, 100, 50)
 
 start = 1
 compare = 2
@@ -55,6 +57,66 @@ class Button:
         return False
 
 
+# ----------------------------------------------------------------------------#
+# Slider class from:
+# https://www.dreamincode.net/forums/topic/401541-buttons-and-sliders-in-pygame/
+class Slider():
+    def __init__(self, name, val, maxi, mini, pos):
+        self.val = val  # start value
+        self.maxi = maxi  # maximum at slider position right
+        self.mini = mini  # minimum at slider position left
+        self.xpos = pos  # x-location on screen
+        self.ypos = 450
+        self.surf = pygame.surface.Surface((150, 75))
+        # the hit attribute indicates slider movement due to mouse interaction
+        self.hit = False
+        font = pygame.font.SysFont("comicsans", 20)
+        self.txt_surf = font.render(name, 1, white)
+        self.txt_rect = self.txt_surf.get_rect(center=(75, 25))
+
+        # Static graphics - slider background #
+        self.surf.fill(turquoise)
+        pygame.draw.rect(self.surf, black, [0, 0, 150, 75], 3)
+        pygame.draw.rect(self.surf, black, [6, 15, 138, 20], 0)
+        pygame.draw.rect(self.surf, white, [15, 45, 120, 8], 0)
+        # this surface never changes
+        self.surf.blit(self.txt_surf, self.txt_rect)
+
+        # dynamic graphics - button surface #
+        self.button_surf = pygame.surface.Surface((50, 55))
+        self.button_surf.fill(trans)
+        self.button_surf.set_colorkey(trans)
+        pygame.draw.circle(self.button_surf, black, (25, 42), 9, 0)
+
+    def draw(self):
+        """ Combination of static and dynamic graphics in a copy of
+    the basic slide surface
+    """
+        # static
+        surf = self.surf.copy()
+
+        # dynamic
+        pos = (15+int((self.val-self.mini)/(self.maxi-self.mini)*120), 33)
+        self.button_rect = self.button_surf.get_rect(center=pos)
+        surf.blit(self.button_surf, self.button_rect)
+        # move of button box to correct screen position
+        self.button_rect.move_ip(self.xpos, self.ypos)
+
+        # screen
+        screen.blit(surf, (self.xpos, self.ypos))
+
+    def move(self):
+        """
+    The dynamic part; reacts to movement of the slider button.
+    """
+        self.val = (pygame.mouse.get_pos()[0] - self.xpos - 15) \
+                   / 120 * (self.maxi - self.mini) + self.mini
+        if self.val < self.mini:
+            self.val = self.mini
+        if self.val > self.maxi:
+            self.val = self.maxi
+
+
 selected_sort = 'Bubble sort'
 
 
@@ -68,6 +130,7 @@ def redraw_menu():
     radix_button.draw(screen)
     bogo_button.draw(screen)
     start_button.draw(screen)
+    speed.draw()
     pygame.draw.rect(screen, black, (0, (height - (height - 200)) - 2,
                                      width + 4, height - 400 + 4))
     pygame.draw.rect(screen, turquoise, (0, (height - (height - 200)),
@@ -93,6 +156,9 @@ merge_button = Button(turquoise, 580, 10, 100, 35, "Merge sort")
 radix_button = Button(turquoise, 710, 10, 100, 35, "Radix sort")
 bogo_button = Button(turquoise, 840, 10, 100, 35, "Bogo sort")
 start_button = Button(turquoise, width / 2 - 50, height - 45, 100, 35, "Start")
+buttons = [bubble_button, select_button, insert_button, quick_button,
+           merge_button, radix_button, bogo_button, start_button]
+speed = Slider("Animation slowdown", 0.0001, 0.2, 0.0001, 100)
 
 
 def menu():
@@ -135,40 +201,21 @@ def menu():
                 if bogo_button.is_over(pos):
                     algorithm = bogo_sort
                     selected_sort = 'Bogo sort'
+                if speed.button_rect.collidepoint(pos):
+                    speed.hit = True
 
             if event.type == pygame.MOUSEMOTION:
-                if start_button.is_over(pos):
-                    start_button.color = light_turquoise
-                else:
-                    start_button.color = turquoise
-                if bubble_button.is_over(pos):
-                    bubble_button.color = light_turquoise
-                else:
-                    bubble_button.color = turquoise
-                if select_button.is_over(pos):
-                    select_button.color = light_turquoise
-                else:
-                    select_button.color = turquoise
-                if insert_button.is_over(pos):
-                    insert_button.color = light_turquoise
-                else:
-                    insert_button.color = turquoise
-                if quick_button.is_over(pos):
-                    quick_button.color = light_turquoise
-                else:
-                    quick_button.color = turquoise
-                if merge_button.is_over(pos):
-                    merge_button.color = light_turquoise
-                else:
-                    merge_button.color = turquoise
-                if bogo_button.is_over(pos):
-                    bogo_button.color = light_turquoise
-                else:
-                    bogo_button.color = turquoise
-                if radix_button.is_over(pos):
-                    radix_button.color = light_turquoise
-                else:
-                    radix_button.color = turquoise
+                for s in buttons:
+                    if s.is_over(pos):
+                        s.color = light_turquoise
+                    else:
+                        s.color = turquoise
+
+            if event.type == pygame.MOUSEBUTTONUP:
+                    speed.hit = False
+
+        if speed.hit:
+            speed.move()
 
 
 # -----------------------------------------------------------------------------#
@@ -191,7 +238,7 @@ def animation(array):
 
     while True:
         pygame.display.update()
-        time.sleep(0.01)
+        time.sleep(speed.val)
 
         for event in pygame.event.get():
             pos = pygame.mouse.get_pos()
